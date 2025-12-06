@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
+import { Analytics } from '@vercel/analytics/react';
 import HistoryList from './components/HistoryList';
 import Scanner from './components/Scanner';
 import Settings from './components/Settings';
@@ -147,6 +148,8 @@ const App: React.FC = () => {
           </button>
         </div>
       )}
+
+      <Analytics />
     </div>
   );
 };
