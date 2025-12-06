@@ -1,0 +1,7 @@
+{
+  "name": "PlateSpotter AI",
+  "description": "Intelligent license plate recognition and logging tool powered by Gemini.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
