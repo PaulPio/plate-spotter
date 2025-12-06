@@ -30,9 +30,10 @@ const App: React.FC = () => {
     }
   }, []);
 
-  // Save history when it changes
+  // Save history when it changes (exclude large imageUrl to avoid localStorage limits)
   useEffect(() => {
-    localStorage.setItem('plate_history', JSON.stringify(history));
+    const historyWithoutImages = history.map(({ imageUrl, ...rest }) => rest);
+    localStorage.setItem('plate_history', JSON.stringify(historyWithoutImages));
   }, [history]);
 
   const handleSaveSettings = (url: string) => {
@@ -43,7 +44,7 @@ const App: React.FC = () => {
   const handleScanComplete = (result: ScanResult) => {
     setHistory(prev => [result, ...prev]);
     setIsScanning(false);
-    
+
     // Automatically sync if URL is configured
     if (webhookUrl) {
       syncScanResult(result, webhookUrl);
@@ -56,21 +57,21 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 pb-20 max-w-md mx-auto relative shadow-2xl border-x border-slate-800/50">
-      
+
       {/* Header */}
       <header className="sticky top-0 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 p-4 z-40 flex justify-between items-center">
         <div className="flex items-center space-x-2">
-           <div className="w-8 h-8 bg-gradient-to-tr from-indigo-500 to-emerald-500 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-lg">
-             P
-           </div>
-           <h1 className="text-xl font-bold tracking-tight text-white">PlateSpotter</h1>
+          <div className="w-8 h-8 bg-gradient-to-tr from-indigo-500 to-emerald-500 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-lg">
+            P
+          </div>
+          <h1 className="text-xl font-bold tracking-tight text-white">PlateSpotter</h1>
         </div>
-        
+
         <div className="flex items-center space-x-3">
           <div className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/20">
             AI Active
           </div>
-          <button 
+          <button
             onClick={() => setIsSettingsOpen(true)}
             className="text-slate-400 hover:text-white transition-colors"
           >
@@ -84,7 +85,7 @@ const App: React.FC = () => {
 
       {/* Main Content */}
       <main className="p-4 space-y-6">
-        
+
         {/* Stats Card */}
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-slate-800 p-4 rounded-xl border border-slate-700/50">
@@ -101,7 +102,7 @@ const App: React.FC = () => {
 
         {/* Action Button (Large) */}
         {!isScanning && (
-          <button 
+          <button
             onClick={() => setIsScanning(true)}
             className="w-full bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white p-6 rounded-2xl shadow-xl shadow-indigo-900/20 flex flex-col items-center justify-center group transition-all transform hover:scale-[1.02]"
           >
@@ -126,8 +127,8 @@ const App: React.FC = () => {
       )}
 
       {/* Settings Modal */}
-      <Settings 
-        isOpen={isSettingsOpen} 
+      <Settings
+        isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
         webhookUrl={webhookUrl}
         onSave={handleSaveSettings}
