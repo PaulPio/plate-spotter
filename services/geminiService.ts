@@ -1,56 +1,25 @@
-import { GoogleGenAI, Type } from "@google/genai";
-import { MODEL_FAST, MODEL_VISION } from "../constants";
-
-// Ensure API key is present
-const apiKey = process.env.GEMINI_API_KEY || '';
-const ai = new GoogleGenAI({ apiKey });
-
 /**
  * Analyzes an image to extract license plate information.
- * Uses gemini-3-pro-preview for high-accuracy image understanding.
+ * Calls the serverless API route which securely accesses the Gemini API.
  */
 export const analyzeLicensePlateImage = async (base64Image: string): Promise<{ plateNumber: string; confidence: string; region: string } | null> => {
-  if (!apiKey) throw new Error("API Key is missing.");
-
   try {
-    const response = await ai.models.generateContent({
-      model: MODEL_VISION,
-      contents: {
-        parts: [
-          {
-            inlineData: {
-              mimeType: 'image/jpeg', // Assuming JPEG for camera captures usually
-              data: base64Image
-            }
-          },
-          {
-            text: "Analyze this image and identify any vehicle license plate. Return the license plate number (alphanumeric only), a confidence level (High, Medium, Low), and the likely region/state if visible."
-          }
-        ]
-      },
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            plateNumber: { type: Type.STRING, description: "The alphanumeric characters of the license plate." },
-            confidence: { type: Type.STRING, description: "Confidence level of the detection: High, Medium, or Low." },
-            region: { type: Type.STRING, description: "The state, province, or country identified on the plate, or 'Unknown'." },
-            found: { type: Type.BOOLEAN, description: "Whether a license plate was successfully found in the image." }
-          },
-          required: ["found"],
-        }
-      }
+    const response = await fetch('/api/analyze', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ base64Image })
     });
 
-    const text = response.text;
-    if (!text) return null;
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'API request failed');
+    }
 
-    const data = JSON.parse(text);
+    const data = await response.json();
     if (!data.found || !data.plateNumber) return null;
 
     return {
-      plateNumber: data.plateNumber.toUpperCase(),
+      plateNumber: data.plateNumber,
       confidence: data.confidence || 'Medium',
       region: data.region || 'Unknown'
     };
@@ -63,25 +32,26 @@ export const analyzeLicensePlateImage = async (base64Image: string): Promise<{ p
 
 /**
  * Normalizes and formats a manually entered license plate.
- * Uses gemini-flash-lite-latest for low-latency text processing.
+ * Calls the serverless API route for text processing.
  */
 export const formatManualEntry = async (input: string): Promise<string> => {
-  if (!apiKey) throw new Error("API Key is missing.");
-
   try {
-    const response = await ai.models.generateContent({
-      model: MODEL_FAST,
-      contents: `Standardize this license plate text to a clean, uppercase alphanumeric format (spaces are allowed if standard for the region, otherwise remove them). Input: "${input}"`,
-      config: {
-        maxOutputTokens: 50, // Keep it very short and fast
-        temperature: 0.1, // Deterministic
-      }
+    const response = await fetch('/api/format', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ input })
     });
 
-    return response.text?.trim() || input.toUpperCase();
+    if (!response.ok) {
+      // Fallback to basic formatting
+      return input.replace(/[^a-zA-Z0-9 ]/g, '').toUpperCase();
+    }
+
+    const data = await response.json();
+    return data.formatted || input.toUpperCase();
+
   } catch (error) {
     console.error("Error processing text:", error);
-    // Fallback to basic JS formatting if AI fails for some reason
     return input.replace(/[^a-zA-Z0-9 ]/g, '').toUpperCase();
   }
 };
