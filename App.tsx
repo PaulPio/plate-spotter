@@ -8,11 +8,13 @@ import Settings from './components/Settings';
 import { ScanResult } from './types';
 import { syncScanResult } from './services/syncService';
 
+const DEFAULT_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbx_ZqdtdaH0Tt0AdtvvurxkYN2PV2EWlNbUX41qrO9hkKq9jRztDb2OUG2c011Y12hx/exec';
+
 const App: React.FC = () => {
   const [history, setHistory] = useState<ScanResult[]>([]);
   const [isScanning, setIsScanning] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [webhookUrl, setWebhookUrl] = useState('');
+  const [webhookUrl, setWebhookUrl] = useState(DEFAULT_WEBHOOK_URL);
 
   // Load history and settings from local storage on mount
   useEffect(() => {
