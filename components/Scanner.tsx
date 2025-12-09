@@ -25,6 +25,7 @@ const Scanner: React.FC<ScannerProps> = ({ onScanComplete, onCancel }) => {
   }>({});
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
 
   // Compress image to reduce size for API calls (Vercel has 4.5MB limit)
   const compressImage = (base64: string, maxWidth = 1280, quality = 0.7): Promise<string> => {
@@ -70,16 +71,16 @@ const Scanner: React.FC<ScannerProps> = ({ onScanComplete, onCancel }) => {
     if (!file) return;
 
     setProcessing({ status: 'analyzing', message: 'Analyzing vehicle...' });
-    
+
     const reader = new FileReader();
     reader.onloadend = async () => {
       const base64String = reader.result as string;
-      
+
       try {
         // Compress image for preview and API
         const compressedBase64 = await compressImage(base64String);
         setPreviewUrl(compressedBase64);
-        
+
         const rawBase64 = compressedBase64.split(',')[1];
         const analysis = await analyzeLicensePlateImage(rawBase64);
 
@@ -199,11 +200,30 @@ const Scanner: React.FC<ScannerProps> = ({ onScanComplete, onCancel }) => {
               </svg>
               <span>Capture Plate</span>
             </button>
+
+            <button
+              onClick={() => galleryInputRef.current?.click()}
+              disabled={processing.status === 'analyzing'}
+              className="mt-3 w-full py-4 bg-slate-700 hover:bg-slate-600 active:bg-slate-800 text-white font-bold rounded-xl shadow-lg shadow-slate-900/20 transition-all flex items-center justify-center space-x-2 disabled:opacity-50 border border-slate-600"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <span>Upload Photo</span>
+            </button>
+
             <input
               ref={fileInputRef}
               type="file"
               accept="image/*"
               capture="environment"
+              className="hidden"
+              onChange={handleCameraCapture}
+            />
+            <input
+              ref={galleryInputRef}
+              type="file"
+              accept="image/*"
               className="hidden"
               onChange={handleCameraCapture}
             />
