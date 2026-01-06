@@ -9,7 +9,7 @@ import Settings from './components/Settings';
 import { ScanResult } from './types';
 import { syncScanResult } from './services/syncService';
 
-const DEFAULT_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbzLX2HpfmeFbzec2C0IyWaPBk-r0WDTYu4WcX9d6b-FsQ4gtEblPNNsotxMCH6Tmvgy/exec';
+const DEFAULT_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbyY-rKlfX4E2CsCQJAndrPTPEw4r1WfMxZUkbYIZqQaPAKAxCOG3WqnkXX5nB9PH_CQ/exec';
 
 const App: React.FC = () => {
   const [history, setHistory] = useState<ScanResult[]>([]);
