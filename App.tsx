@@ -4,17 +4,19 @@ import { createRoot } from 'react-dom/client';
 import { Analytics } from '@vercel/analytics/react';
 import HistoryList from './components/HistoryList';
 import Scanner from './components/Scanner';
+import WashScanner from './components/WashScanner';
 import Settings from './components/Settings';
 import { ScanResult } from './types';
 import { syncScanResult } from './services/syncService';
 
-const DEFAULT_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbx_ZqdtdaH0Tt0AdtvvurxkYN2PV2EWlNbUX41qrO9hkKq9jRztDb2OUG2c011Y12hx/exec';
+const DEFAULT_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbzLX2HpfmeFbzec2C0IyWaPBk-r0WDTYu4WcX9d6b-FsQ4gtEblPNNsotxMCH6Tmvgy/exec';
 
 const App: React.FC = () => {
   const [history, setHistory] = useState<ScanResult[]>([]);
   const [isScanning, setIsScanning] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [webhookUrl, setWebhookUrl] = useState(DEFAULT_WEBHOOK_URL);
+  const [mode, setMode] = useState<'repair' | 'wash'>('repair');
 
   // Load history and settings from local storage on mount
   useEffect(() => {
@@ -86,19 +88,39 @@ const App: React.FC = () => {
         </div>
       </header>
 
+      {/* Mode Switcher */}
+      <div className="sticky top-[73px] z-30 bg-slate-900 border-b border-slate-800">
+        <div className="flex p-2 mx-4">
+          <button
+            onClick={() => setMode('repair')}
+            className={`flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all ${mode === 'repair' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/30' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'}`}
+          >
+            🔧 Repairs
+          </button>
+          <button
+            onClick={() => setMode('wash')}
+            className={`flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all ml-2 ${mode === 'wash' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/30' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'}`}
+          >
+            🚿 Car Wash
+          </button>
+        </div>
+      </div>
+
       {/* Main Content */}
       <main className="p-4 space-y-6">
 
         {/* Stats Card */}
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-slate-800 p-4 rounded-xl border border-slate-700/50">
-            <p className="text-slate-400 text-xs uppercase font-bold tracking-wider mb-1">Total Scans</p>
-            <p className="text-2xl font-bold text-white">{history.length}</p>
+            <p className="text-slate-400 text-xs uppercase font-bold tracking-wider mb-1">Total {mode === 'repair' ? 'Repairs' : 'Washes'}</p>
+            <p className="text-2xl font-bold text-white">
+              {history.filter(h => h.entryType === mode).length}
+            </p>
           </div>
           <div className="bg-slate-800 p-4 rounded-xl border border-slate-700/50">
             <p className="text-slate-400 text-xs uppercase font-bold tracking-wider mb-1">Today</p>
             <p className="text-2xl font-bold text-white">
-              {history.filter(h => new Date(h.timestamp).toDateString() === new Date().toDateString()).length}
+              {history.filter(h => h.entryType === mode && new Date(h.timestamp).toDateString() === new Date().toDateString()).length}
             </p>
           </div>
         </div>
@@ -114,19 +136,23 @@ const App: React.FC = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 018.07 3h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0016.07 6H17a2 2 0 012 2v7a2 2 0 01-2 2H3a2 2 0 01-2-2V8z" />
               </svg>
             </div>
-            <span className="text-lg font-bold">New Scan</span>
+            <span className="text-lg font-bold">New {mode === 'repair' ? 'Repair' : 'Wash'}</span>
             <span className="text-indigo-200 text-sm">Camera or Manual Entry</span>
           </button>
         )}
 
         {/* History List */}
-        <HistoryList items={history} onDelete={handleDelete} />
+        <HistoryList items={history.filter(h => h.entryType === mode)} onDelete={handleDelete} />
 
       </main>
 
       {/* Scanner Overlay */}
       {isScanning && (
-        <Scanner onScanComplete={handleScanComplete} onCancel={() => setIsScanning(false)} />
+        mode === 'repair' ? (
+          <Scanner onScanComplete={handleScanComplete} onCancel={() => setIsScanning(false)} />
+        ) : (
+          <WashScanner onScanComplete={handleScanComplete} onCancel={() => setIsScanning(false)} />
+        )
       )}
 
       {/* Settings Modal */}

@@ -5,7 +5,9 @@ export interface ScanResult {
   confidence?: string;
   region?: string;
   notes?: string;
-  serviceDetails?: string; // New field for mechanic service description
+  entryType: 'repair' | 'wash'; // Type of entry: repair or car wash
+  serviceDetails?: string; // For repair entries: service description
+  companyName?: string; // For wash entries: company/owner name
   imageUrl?: string; // Base64 or URL
   method: 'camera' | 'upload' | 'manual';
 }

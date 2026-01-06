@@ -122,6 +122,7 @@ const Scanner: React.FC<ScannerProps> = ({ onScanComplete, onCancel }) => {
       plateNumber: plateInput.toUpperCase(),
       timestamp: new Date().toISOString(),
       method: activeTab === 'camera' ? 'camera' : 'manual',
+      entryType: 'repair',
       serviceDetails: serviceDetails,
       ...tempScanData
     };
