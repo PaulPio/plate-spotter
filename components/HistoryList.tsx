@@ -36,10 +36,21 @@ const HistoryList: React.FC<HistoryListProps> = ({ items, onDelete }) => {
               )}
             </div>
             <div>
-              <div className="font-mono text-lg font-bold text-white tracking-wide leading-none mb-1">{item.plateNumber}</div>
-              
-              {item.serviceDetails && (
+              <div className="flex items-center gap-2 mb-1">
+                <div className="font-mono text-lg font-bold text-white tracking-wide leading-none">{item.plateNumber}</div>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${item.entryType === 'repair' ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'}`}>
+                  {item.entryType === 'repair' ? '🔧 Repair' : '🚿 Wash'}
+                </span>
+              </div>
+
+              {item.entryType === 'repair' && item.serviceDetails && (
                 <p className="text-slate-300 text-sm mb-2 line-clamp-2">{item.serviceDetails}</p>
+              )}
+
+              {item.entryType === 'wash' && item.companyName && (
+                <p className="text-slate-300 text-sm mb-2 line-clamp-2">
+                  <span className="text-slate-400">Company:</span> {item.companyName}
+                </p>
               )}
 
               <div className="text-xs text-slate-500 flex flex-col sm:flex-row sm:items-center">
@@ -53,7 +64,7 @@ const HistoryList: React.FC<HistoryListProps> = ({ items, onDelete }) => {
               </div>
             </div>
           </div>
-          <button 
+          <button
             onClick={() => onDelete(item.id)}
             className="text-slate-500 hover:text-red-400 p-2 transition-colors -mr-2"
           >
