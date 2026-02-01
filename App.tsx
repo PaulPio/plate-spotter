@@ -5,6 +5,7 @@ import { Analytics } from '@vercel/analytics/react';
 import HistoryList from './components/HistoryList';
 import Scanner from './components/Scanner';
 import WashScanner from './components/WashScanner';
+import ReturnsScanner from './components/ReturnsScanner';
 import Settings from './components/Settings';
 import { ScanResult } from './types';
 import { syncScanResult } from './services/syncService';
@@ -16,7 +17,7 @@ const App: React.FC = () => {
   const [isScanning, setIsScanning] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [webhookUrl, setWebhookUrl] = useState(DEFAULT_WEBHOOK_URL);
-  const [mode, setMode] = useState<'repair' | 'wash'>('repair');
+  const [mode, setMode] = useState<'repair' | 'wash' | 'return'>('repair');
 
   // Load history and settings from local storage on mount
   useEffect(() => {
@@ -103,6 +104,12 @@ const App: React.FC = () => {
           >
             🚿 Car Wash
           </button>
+          <button
+            onClick={() => setMode('return')}
+            className={`flex-1 py-2.5 text-sm font-semibold rounded-lg transition-all ml-2 ${mode === 'return' ? 'bg-orange-600 text-white shadow-lg shadow-orange-900/30' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'}`}
+          >
+            ↩️ Returns
+          </button>
         </div>
       </div>
 
@@ -112,7 +119,7 @@ const App: React.FC = () => {
         {/* Stats Card */}
         <div className="grid grid-cols-2 gap-4">
           <div className="bg-slate-800 p-4 rounded-xl border border-slate-700/50">
-            <p className="text-slate-400 text-xs uppercase font-bold tracking-wider mb-1">Total {mode === 'repair' ? 'Repairs' : 'Washes'}</p>
+            <p className="text-slate-400 text-xs uppercase font-bold tracking-wider mb-1">Total {mode === 'repair' ? 'Repairs' : mode === 'wash' ? 'Washes' : 'Returns'}</p>
             <p className="text-2xl font-bold text-white">
               {history.filter(h => h.entryType === mode).length}
             </p>
@@ -136,7 +143,7 @@ const App: React.FC = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 018.07 3h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0016.07 6H17a2 2 0 012 2v7a2 2 0 01-2 2H3a2 2 0 01-2-2V8z" />
               </svg>
             </div>
-            <span className="text-lg font-bold">New {mode === 'repair' ? 'Repair' : 'Wash'}</span>
+            <span className="text-lg font-bold">New {mode === 'repair' ? 'Repair' : mode === 'wash' ? 'Wash' : 'Return'}</span>
             <span className="text-indigo-200 text-sm">Camera or Manual Entry</span>
           </button>
         )}
@@ -150,8 +157,10 @@ const App: React.FC = () => {
       {isScanning && (
         mode === 'repair' ? (
           <Scanner onScanComplete={handleScanComplete} onCancel={() => setIsScanning(false)} />
-        ) : (
+        ) : mode === 'wash' ? (
           <WashScanner onScanComplete={handleScanComplete} onCancel={() => setIsScanning(false)} />
+        ) : (
+          <ReturnsScanner onScanComplete={handleScanComplete} onCancel={() => setIsScanning(false)} />
         )
       )}
 
