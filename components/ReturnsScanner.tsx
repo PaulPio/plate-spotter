@@ -28,10 +28,14 @@ const ReturnsScanner: React.FC<ReturnsScannerProps> = ({ onScanComplete, onCance
     const galleryInputRef = useRef<HTMLInputElement>(null);
 
     // Compress image to reduce size for API calls (Vercel has 4.5MB limit)
-    const compressImage = (base64: string, maxWidth = 1280, quality = 0.7): Promise<string> => {
-        return new Promise((resolve) => {
+    // Modified to use URL.createObjectURL to avoid memory crashes with large files
+    const compressImage = (file: File, maxWidth = 1280, quality = 0.7): Promise<string> => {
+        return new Promise((resolve, reject) => {
             const img = new Image();
+            const objectUrl = URL.createObjectURL(file);
+
             img.onload = () => {
+                URL.revokeObjectURL(objectUrl); // Free memory immediately
                 const canvas = document.createElement('canvas');
                 let width = img.width;
                 let height = img.height;
@@ -46,13 +50,24 @@ const ReturnsScanner: React.FC<ReturnsScannerProps> = ({ onScanComplete, onCance
                 canvas.height = height;
 
                 const ctx = canvas.getContext('2d');
-                ctx?.drawImage(img, 0, 0, width, height);
+                if (!ctx) {
+                    reject(new Error('Could not get canvas context'));
+                    return;
+                }
+
+                ctx.drawImage(img, 0, 0, width, height);
 
                 // Return compressed base64 (without data URL prefix for API)
                 const compressed = canvas.toDataURL('image/jpeg', quality);
                 resolve(compressed);
             };
-            img.src = base64;
+
+            img.onerror = (e) => {
+                URL.revokeObjectURL(objectUrl);
+                reject(e);
+            };
+
+            img.src = objectUrl;
         });
     };
 
@@ -64,44 +79,40 @@ const ReturnsScanner: React.FC<ReturnsScannerProps> = ({ onScanComplete, onCance
         setScanStep('capture');
         setTempScanData({});
         if (fileInputRef.current) fileInputRef.current.value = '';
+        if (galleryInputRef.current) galleryInputRef.current.value = '';
     };
 
     const handleCameraCapture = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (!file) return;
 
-        setProcessing({ status: 'analyzing', message: 'Analyzing vehicle...' });
+        setProcessing({ status: 'analyzing', message: 'Optimizing & Analyzing...' });
 
-        const reader = new FileReader();
-        reader.onloadend = async () => {
-            const base64String = reader.result as string;
+        try {
+            // Direct compression from File object (prevents large base64 in memory)
+            const compressedBase64 = await compressImage(file);
+            setPreviewUrl(compressedBase64);
 
-            try {
-                // Compress image for preview and API
-                const compressedBase64 = await compressImage(base64String);
-                setPreviewUrl(compressedBase64);
+            const rawBase64 = compressedBase64.split(',')[1];
+            const analysis = await analyzeLicensePlateImage(rawBase64);
 
-                const rawBase64 = compressedBase64.split(',')[1];
-                const analysis = await analyzeLicensePlateImage(rawBase64);
-
-                if (analysis) {
-                    // Pre-fill data and move to review step
-                    setPlateInput(analysis.plateNumber);
-                    setTempScanData({
-                        confidence: analysis.confidence,
-                        region: analysis.region,
-                        imageUrl: compressedBase64
-                    });
-                    setScanStep('review');
-                    setProcessing({ status: 'idle' });
-                } else {
-                    setProcessing({ status: 'error', message: 'Could not detect a license plate. Please try again or use manual entry.' });
-                }
-            } catch (err) {
-                setProcessing({ status: 'error', message: 'Network or API error. Check your connection.' });
+            if (analysis) {
+                // Pre-fill data and move to review step
+                setPlateInput(analysis.plateNumber);
+                setTempScanData({
+                    confidence: analysis.confidence,
+                    region: analysis.region,
+                    imageUrl: compressedBase64
+                });
+                setScanStep('review');
+                setProcessing({ status: 'idle' });
+            } else {
+                setProcessing({ status: 'error', message: 'Could not detect a license plate. Please try again or use manual entry.' });
             }
-        };
-        reader.readAsDataURL(file);
+        } catch (err) {
+            console.error(err);
+            setProcessing({ status: 'error', message: 'Error processing image. Please try again.' });
+        }
     };
 
     const handleManualFormat = async () => {
@@ -123,7 +134,8 @@ const ReturnsScanner: React.FC<ReturnsScannerProps> = ({ onScanComplete, onCance
             timestamp: new Date().toISOString(),
             method: activeTab === 'camera' ? 'camera' : 'manual',
             entryType: 'return',
-            companyName: companyName,
+            companyName: companyName, // Required for Return
+            serviceDetails: '', // Ensure field exists for Google Sheet
             ...tempScanData
         };
 
@@ -258,7 +270,6 @@ const ReturnsScanner: React.FC<ReturnsScannerProps> = ({ onScanComplete, onCance
                                     type="text"
                                     value={plateInput}
                                     onChange={(e) => setPlateInput(e.target.value.toUpperCase())}
-                                    onBlur={activeTab === 'manual' ? handleManualFormat : undefined}
                                     placeholder="ABC 1234"
                                     className="w-full bg-slate-800 border border-slate-700 text-white text-3xl font-mono p-4 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none placeholder-slate-600 uppercase text-center tracking-wider"
                                     autoFocus={activeTab === 'manual'}

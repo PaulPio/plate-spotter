@@ -46,24 +46,61 @@ To save your scans to a Google Sheet automatically:
 
 ```javascript
 function doPost(e) {
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
   var rawData = e.postData.contents;
   var data = JSON.parse(rawData);
   
-  // Add headers if sheet is empty
-  if (sheet.getLastRow() === 0) {
-    sheet.appendRow(["Timestamp", "Plate", "Service Details", "Region", "Method", "Notes"]);
+  // Determine which sheet to use
+  var sheetName = "Sheet1"; // Default for repairs
+  if (data.entryType === "wash") sheetName = "Carwashes";
+  if (data.entryType === "return") sheetName = "Returns";
+  
+  var sheet = ss.getSheetByName(sheetName);
+  
+  // Create sheet if it doesn't exist (optional safety/convenience)
+  if (!sheet) {
+    sheet = ss.insertSheet(sheetName);
   }
   
-  // Add the new row
-  sheet.appendRow([
-    data.timestamp,
-    data.plateNumber,
-    data.serviceDetails || "N/A",
-    data.region || "Unknown",
-    data.method,
-    data.notes || ""
-  ]);
+  // Add headers if sheet is empty
+  if (sheet.getLastRow() === 0) {
+    if (sheetName === "Sheet1") { // Repairs
+        sheet.appendRow(["Timestamp", "Entry Type", "Plate Number", "Service Details", "Region", "Method", "Confidence", "Notes"]);
+    } else if (sheetName === "Carwashes") {
+        sheet.appendRow(["Timestamp", "Entry Type", "Plate Number", "Company Name", "Region", "Method", "Confidence", "Notes"]);
+    } else if (sheetName === "Returns") {
+        sheet.appendRow(["Timestamp", "Entry Type", "Plate Number", "Company Name", "Region", "Method", "Confidence", "Notes"]);
+    }
+  }
+  
+  // Prepare row data based on sheet type/columns
+  var row = [];
+  if (sheetName === "Sheet1") {
+      row = [
+        data.timestamp,
+        data.entryType,
+        data.plateNumber,
+        data.serviceDetails || "N/A",
+        data.region || "Unknown",
+        data.method,
+        data.confidence || "N/A",
+        data.notes || ""
+      ];
+  } else {
+      // Wash or Return
+      row = [
+        data.timestamp,
+        data.entryType,
+        data.plateNumber,
+        data.companyName || "N/A",
+        data.region || "Unknown",
+        data.method,
+        data.confidence || "N/A",
+        data.notes || ""
+      ];
+  }
+  
+  sheet.appendRow(row);
   
   return ContentService.createTextOutput(JSON.stringify({status: "success"}));
 }
