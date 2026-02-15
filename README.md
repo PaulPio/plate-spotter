@@ -65,11 +65,11 @@ function doPost(e) {
   // Add headers if sheet is empty
   if (sheet.getLastRow() === 0) {
     if (sheetName === "Sheet1") { // Repairs
-        sheet.appendRow(["Timestamp", "Entry Type", "Plate Number", "Service Details", "Region", "Method", "Confidence", "Notes"]);
+        sheet.appendRow(["Timestamp", "Plate Number", "Service Details", "Region", "Method", "Confidence", "Notes"]);
     } else if (sheetName === "Carwashes") {
-        sheet.appendRow(["Timestamp", "Entry Type", "Plate Number", "Company Name", "Region", "Method", "Confidence", "Notes"]);
+        sheet.appendRow(["Timestamp", "Plate Number", "Company Name", "Region", "Method", "Confidence", "Notes"]);
     } else if (sheetName === "Returns") {
-        sheet.appendRow(["Timestamp", "Entry Type", "Plate Number", "Company Name", "Region", "Method", "Confidence", "Notes"]);
+        sheet.appendRow(["Timestamp", "Plate Number", "Company Name", "Region", "Method", "Confidence", "Notes"]);
     }
   }
   
@@ -78,7 +78,6 @@ function doPost(e) {
   if (sheetName === "Sheet1") {
       row = [
         data.timestamp,
-        data.entryType,
         data.plateNumber,
         data.serviceDetails || "N/A",
         data.region || "Unknown",
@@ -90,7 +89,6 @@ function doPost(e) {
       // Wash or Return
       row = [
         data.timestamp,
-        data.entryType,
         data.plateNumber,
         data.companyName || "N/A",
         data.region || "Unknown",
