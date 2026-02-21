@@ -38,8 +38,8 @@ const HistoryList: React.FC<HistoryListProps> = ({ items, onDelete }) => {
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <div className="font-mono text-lg font-bold text-white tracking-wide leading-none">{item.plateNumber}</div>
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${item.entryType === 'repair' ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'}`}>
-                  {item.entryType === 'repair' ? '🔧 Repair' : '🚿 Wash'}
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase ${item.entryType === 'repair' ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30' : item.entryType === 'wash' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-orange-500/20 text-orange-300 border border-orange-500/30'}`}>
+                  {item.entryType === 'repair' ? '🔧 Repair' : item.entryType === 'wash' ? '🚿 Wash' : '↩️ Return'}
                 </span>
               </div>
 
@@ -47,7 +47,7 @@ const HistoryList: React.FC<HistoryListProps> = ({ items, onDelete }) => {
                 <p className="text-slate-300 text-sm mb-2 line-clamp-2">{item.serviceDetails}</p>
               )}
 
-              {item.entryType === 'wash' && item.companyName && (
+              {(item.entryType === 'wash' || item.entryType === 'return') && item.companyName && (
                 <p className="text-slate-300 text-sm mb-2 line-clamp-2">
                   <span className="text-slate-400">Company:</span> {item.companyName}
                 </p>
