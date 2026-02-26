@@ -1,3 +1,9 @@
+export interface Location {
+  id: string;
+  name: string;
+  webhookUrl: string;
+}
+
 export interface ScanResult {
   id: string;
   plateNumber: string;

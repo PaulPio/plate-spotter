@@ -7,16 +7,29 @@ import Scanner from './components/Scanner';
 import WashScanner from './components/WashScanner';
 import ReturnsScanner from './components/ReturnsScanner';
 import Settings from './components/Settings';
-import { ScanResult } from './types';
+import { ScanResult, Location } from './types';
 import { syncScanResult } from './services/syncService';
 
-const DEFAULT_WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbzG4GXQn0ofdMpGWXzbkdmVe_Oosazdic-jjTunKsIfcl1ohLBEpPByKpnl-shCvkWU/exec';
-
+const HARDCODED_LOCATIONS: Location[] = [
+  {
+    id: 'mco-location',
+    name: 'MCO',
+    webhookUrl: 'https://script.google.com/macros/s/AKfycbzda5AVJ8-07kfFjXO8vMwKvpE0CnE1-3rXo5p9gD64xDuTouI0VhwA1cPFHoQJfPwE/exec'
+  },
+  {
+    id: 'fll-location',
+    name: 'FLL',
+    webhookUrl: 'https://script.google.com/macros/s/AKfycbzG4GXQn0ofdMpGWXzbkdmVe_Oosazdic-jjTunKsIfcl1ohLBEpPByKpnl-shCvkWU/exec'
+  }
+];
 const App: React.FC = () => {
   const [history, setHistory] = useState<ScanResult[]>([]);
   const [isScanning, setIsScanning] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [webhookUrl, setWebhookUrl] = useState(DEFAULT_WEBHOOK_URL);
+
+  const locations = HARDCODED_LOCATIONS;
+  const [activeLocationId, setActiveLocationId] = useState<string | null>(null);
+
   const [mode, setMode] = useState<'repair' | 'wash' | 'return'>('repair');
 
   // Load history and settings from local storage on mount
@@ -30,9 +43,11 @@ const App: React.FC = () => {
       }
     }
 
-    const savedWebhook = localStorage.getItem('plate_webhook_url');
-    if (savedWebhook) {
-      setWebhookUrl(savedWebhook);
+    const savedActiveId = localStorage.getItem('plate_active_location_id');
+    if (savedActiveId && HARDCODED_LOCATIONS.find((l: Location) => l.id === savedActiveId)) {
+      setActiveLocationId(savedActiveId);
+    } else {
+      setActiveLocationId(HARDCODED_LOCATIONS[0].id);
     }
   }, []);
 
@@ -42,18 +57,25 @@ const App: React.FC = () => {
     localStorage.setItem('plate_history', JSON.stringify(historyWithoutImages));
   }, [history]);
 
-  const handleSaveSettings = (url: string) => {
-    setWebhookUrl(url);
-    localStorage.setItem('plate_webhook_url', url);
-  };
+
+
+  useEffect(() => {
+    if (activeLocationId) {
+      localStorage.setItem('plate_active_location_id', activeLocationId);
+    }
+  }, [activeLocationId]);
+
+
+
+  const activeLocation = locations.find(l => l.id === activeLocationId);
 
   const handleScanComplete = (result: ScanResult) => {
     setHistory(prev => [result, ...prev]);
     setIsScanning(false);
 
     // Automatically sync if URL is configured
-    if (webhookUrl) {
-      syncScanResult(result, webhookUrl);
+    if (activeLocation?.webhookUrl) {
+      syncScanResult(result, activeLocation.webhookUrl);
     }
   };
 
@@ -74,6 +96,20 @@ const App: React.FC = () => {
         </div>
 
         <div className="flex items-center space-x-3">
+          {locations.length > 0 && (
+            <select
+              value={activeLocationId || ''}
+              onChange={(e) => setActiveLocationId(e.target.value)}
+              className="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-indigo-500 max-w-[120px] truncate"
+            >
+              <option value="" disabled>Select Location</option>
+              {locations.map((loc) => (
+                <option key={loc.id} value={loc.id}>
+                  {loc.name}
+                </option>
+              ))}
+            </select>
+          )}
           <div className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/20">
             AI Active
           </div>
@@ -164,12 +200,10 @@ const App: React.FC = () => {
         )
       )}
 
-      {/* Settings Modal */}
       <Settings
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
-        webhookUrl={webhookUrl}
-        onSave={handleSaveSettings}
+        locations={locations}
       />
 
       {/* Floating Action Button (Sticky, for when scanned list is long) */}

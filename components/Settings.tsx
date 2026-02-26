@@ -1,31 +1,16 @@
 import React, { useState, useEffect } from 'react';
+import { Location } from '../types';
 
 interface SettingsProps {
   isOpen: boolean;
   onClose: () => void;
-  webhookUrl: string;
-  onSave: (url: string) => void;
+  locations: Location[];
 }
 
-const Settings: React.FC<SettingsProps> = ({ isOpen, onClose, webhookUrl, onSave }) => {
-  const [inputUrl, setInputUrl] = useState(webhookUrl);
-  const [isSaved, setIsSaved] = useState(false);
+const Settings: React.FC<SettingsProps> = ({ isOpen, onClose, locations }) => {
   const [activeTab, setActiveTab] = useState<'sync' | 'install'>('sync');
 
-  useEffect(() => {
-    setInputUrl(webhookUrl);
-  }, [webhookUrl, isOpen]);
-
   if (!isOpen) return null;
-
-  const handleSave = () => {
-    onSave(inputUrl);
-    setIsSaved(true);
-    setTimeout(() => {
-      setIsSaved(false);
-      onClose();
-    }, 800);
-  };
 
   const copyScriptToClipboard = () => {
     const script = `function doPost(e) {
@@ -33,46 +18,46 @@ const Settings: React.FC<SettingsProps> = ({ isOpen, onClose, webhookUrl, onSave
   var rawData = e.postData.contents;
   var data = JSON.parse(rawData);
   
-  // Route to different sheets based on entry type
-  var sheet;
-  if (data.entryType === 'wash') {
-    // Car wash entries go to Sheet2
-    sheet = spreadsheet.getSheetByName('Sheet2');
-    if (!sheet) {
-      sheet = spreadsheet.insertSheet('Sheet2');
-    }
-    
-    // Add headers if this is the first row
-    if (sheet.getLastRow() === 0) {
-      sheet.appendRow(["Timestamp", "Plate", "Company Name", "Region", "Method"]);
-    }
-    
-    sheet.appendRow([
-      data.timestamp,
-      data.plateNumber,
-      data.companyName || "N/A",
-      data.region || "Unknown",
-      data.method
-    ]);
+  var type = data.entryType || 'repair';
+  var sheetName = 'All Scans'; // Fallback
+  
+  if (type === 'wash') {
+    sheetName = 'Carwashes';
+  } else if (type === 'return') {
+    sheetName = 'Returns';
   } else {
-    // Repair entries go to the default/first sheet
-    sheet = spreadsheet.getSheets()[0];
-    
-    // Add headers if this is the first row
-    if (sheet.getLastRow() === 0) {
-      sheet.appendRow(["Timestamp", "Plate", "Service", "Region", "Method"]);
-    }
-    
-    sheet.appendRow([
-      data.timestamp,
-      data.plateNumber,
-      data.serviceDetails || "N/A",
-      data.region || "Unknown",
-      data.method
-    ]);
+    sheetName = 'Repairs';
   }
   
-  return ContentService.createTextOutput(JSON.stringify({status: "success"}));
+  var sheet = spreadsheet.getSheetByName(sheetName);
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet(sheetName);
+  }
+  
+  // Add headers if this is a new sheet
+  if (sheet.getLastRow() === 0) {
+    if (type === 'repair') {
+      sheet.appendRow(["Timestamp", "Plate", "Service Details", "Region", "Method", "Notes"]);
+    } else {
+      sheet.appendRow(["Timestamp", "Plate", "Company/Owner", "Region", "Method", "Notes"]);
+    }
+  }
+  
+  // Determine the secondary detail (Service vs Company)
+  var detail = (type === 'repair') ? (data.serviceDetails || "N/A") : (data.companyName || "N/A");
+  
+  // Append the row
+  sheet.appendRow([
+    data.timestamp || new Date().toISOString(),
+    data.plateNumber || "Unknown",
+    detail,
+    data.region || "Unknown",
+    data.method || "manual",
+    data.notes || ""
+  ]);
+  
+  return ContentService.createTextOutput(JSON.stringify({status: "success"}))
+    .setMimeType(ContentService.MimeType.JSON);
 }`;
     navigator.clipboard.writeText(script);
     alert("Script copied to clipboard!");
@@ -111,40 +96,35 @@ const Settings: React.FC<SettingsProps> = ({ isOpen, onClose, webhookUrl, onSave
           {/* --- SYNC TAB --- */}
           {activeTab === 'sync' && (
             <div className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  Webhook URL
-                </label>
-                <input
-                  type="url"
-                  value={inputUrl}
-                  onChange={(e) => setInputUrl(e.target.value)}
-                  placeholder="https://script.google.com/macros/s/..."
-                  className="w-full bg-slate-900 border border-slate-700 text-white p-3 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none font-mono text-sm"
-                />
+              <div className="bg-emerald-500/10 p-4 rounded-xl border border-emerald-500/20 text-sm text-emerald-200">
+                Data synchronization is active for the following predefined locations.
               </div>
 
-              <button
-                onClick={handleSave}
-                className={`w-full py-3 rounded-xl font-bold text-white transition-all flex items-center justify-center space-x-2 ${isSaved ? 'bg-green-600' : 'bg-indigo-600 hover:bg-indigo-500'
-                  }`}
-              >
-                {isSaved ? (
-                  <>
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                    </svg>
-                    <span>Saved!</span>
-                  </>
-                ) : (
-                  <span>Save Configuration</span>
-                )}
-              </button>
+              <div className="space-y-4">
+                <h3 className="text-white font-medium flex items-center">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 mr-2 text-indigo-400">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+                  </svg>
+                  Active Locations
+                </h3>
+                <div className="space-y-3">
+                  {locations.map((loc) => (
+                    <div key={loc.id} className="bg-slate-900/50 border border-slate-700 p-4 rounded-xl">
+                      <div className="font-bold text-white mb-1">{loc.name}</div>
+                      <div className="text-xs text-slate-400 font-mono truncate cursor-help" title={loc.webhookUrl}>
+                        {loc.webhookUrl.substring(0, 40)}...
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
 
               <hr className="border-slate-700" />
 
               <div className="space-y-4 bg-slate-900/50 p-4 rounded-xl border border-slate-700/50 text-sm text-slate-300">
                 <h3 className="font-bold text-white mb-2">Google Sheets Setup</h3>
+                <p className="text-xs text-slate-400 mb-2">Configure a new Google Sheet for each location:</p>
                 <ol className="list-decimal pl-4 space-y-2 text-slate-400 text-xs">
                   <li>Create a new Google Sheet.</li>
                   <li>Go to <span className="text-white">Extensions {'>'} Apps Script</span>.</li>
@@ -152,7 +132,7 @@ const Settings: React.FC<SettingsProps> = ({ isOpen, onClose, webhookUrl, onSave
                   <li>Click <span className="text-white">Deploy {'>'} New Deployment</span>.</li>
                   <li>Select Type: <span className="text-white">Web app</span>.</li>
                   <li>Set <strong>Who has access</strong> to <span className="text-indigo-400">Anyone</span>.</li>
-                  <li>Click Deploy and copy the URL above.</li>
+                  <li>Click Deploy and copy the URL into the location's Webhook URL field.</li>
                 </ol>
 
                 <div className="relative">
@@ -162,50 +142,99 @@ const Settings: React.FC<SettingsProps> = ({ isOpen, onClose, webhookUrl, onSave
   var rawData = e.postData.contents;
   var data = JSON.parse(rawData);
   
-  // Route to different sheets based on entry type
-  var sheet;
-  if (data.entryType === 'wash') {
-    // Car wash entries go to Sheet2
-    sheet = spreadsheet.getSheetByName('Sheet2');
-    if (!sheet) {
-      sheet = spreadsheet.insertSheet('Sheet2');
-    }
-    
-    // Add headers if this is the first row
-    if (sheet.getLastRow() === 0) {
-      sheet.appendRow(["Timestamp", "Plate", "Company Name", "Region", "Method"]);
-    }
-    
-    sheet.appendRow([
-      data.timestamp,
-      data.plateNumber,
-      data.companyName || "N/A",
-      data.region || "Unknown",
-      data.method
-    ]);
+  var type = data.entryType || 'repair';
+  var sheetName = 'All Scans'; // Fallback
+  
+  if (type === 'wash') {
+    sheetName = 'Carwashes';
+  } else if (type === 'return') {
+    sheetName = 'Returns';
   } else {
-    // Repair entries go to the default/first sheet
-    sheet = spreadsheet.getSheets()[0];
-    
-    // Add headers if this is the first row
-    if (sheet.getLastRow() === 0) {
-      sheet.appendRow(["Timestamp", "Plate", "Service", "Region", "Method"]);
-    }
-    
-    sheet.appendRow([
-      data.timestamp,
-      data.plateNumber,
-      data.serviceDetails || "N/A",
-      data.region || "Unknown",
-      data.method
-    ]);
+    sheetName = 'Repairs';
   }
   
-  return ContentService.createTextOutput(JSON.stringify({status: "success"}));
+  var sheet = spreadsheet.getSheetByName(sheetName);
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet(sheetName);
+  }
+  
+  // Add headers if this is a new sheet
+  if (sheet.getLastRow() === 0) {
+    if (type === 'repair') {
+      sheet.appendRow(["Timestamp", "Plate", "Service Details", "Region", "Method", "Notes"]);
+    } else {
+      sheet.appendRow(["Timestamp", "Plate", "Company/Owner", "Region", "Method", "Notes"]);
+    }
+  }
+  
+  // Determine the secondary detail (Service vs Company)
+  var detail = (type === 'repair') ? (data.serviceDetails || "N/A") : (data.companyName || "N/A");
+  
+  // Append the row
+  sheet.appendRow([
+    data.timestamp || new Date().toISOString(),
+    data.plateNumber || "Unknown",
+    detail,
+    data.region || "Unknown",
+    data.method || "manual",
+    data.notes || ""
+  ]);
+  
+  return ContentService.createTextOutput(JSON.stringify({status: "success"}))
+    .setMimeType(ContentService.MimeType.JSON);
 }`}
                   </pre>
                   <button
-                    onClick={copyScriptToClipboard}
+                    onClick={() => {
+                      const script = `function doPost(e) {
+  var spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  var rawData = e.postData.contents;
+  var data = JSON.parse(rawData);
+  
+  var type = data.entryType || 'repair';
+  var sheetName = 'All Scans'; // Fallback
+  
+  if (type === 'wash') {
+    sheetName = 'Carwashes';
+  } else if (type === 'return') {
+    sheetName = 'Returns';
+  } else {
+    sheetName = 'Repairs';
+  }
+  
+  var sheet = spreadsheet.getSheetByName(sheetName);
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet(sheetName);
+  }
+  
+  // Add headers if this is a new sheet
+  if (sheet.getLastRow() === 0) {
+    if (type === 'repair') {
+      sheet.appendRow(["Timestamp", "Plate", "Service Details", "Region", "Method", "Notes"]);
+    } else {
+      sheet.appendRow(["Timestamp", "Plate", "Company/Owner", "Region", "Method", "Notes"]);
+    }
+  }
+  
+  // Determine the secondary detail (Service vs Company)
+  var detail = (type === 'repair') ? (data.serviceDetails || "N/A") : (data.companyName || "N/A");
+  
+  // Append the row
+  sheet.appendRow([
+    data.timestamp || new Date().toISOString(),
+    data.plateNumber || "Unknown",
+    detail,
+    data.region || "Unknown",
+    data.method || "manual",
+    data.notes || ""
+  ]);
+  
+  return ContentService.createTextOutput(JSON.stringify({status: "success"}))
+    .setMimeType(ContentService.MimeType.JSON);
+}`;
+                      navigator.clipboard.writeText(script);
+                      alert("Script copied to clipboard!");
+                    }}
                     className="absolute top-2 right-2 bg-slate-800 text-white text-[10px] px-2 py-1 rounded border border-slate-700 hover:bg-slate-700"
                   >
                     Copy
