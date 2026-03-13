@@ -54,7 +54,7 @@ const HistoryList: React.FC<HistoryListProps> = ({ items, onDelete }) => {
               )}
 
               <div className="text-xs text-slate-500 flex flex-col sm:flex-row sm:items-center">
-                <span>{new Date(item.timestamp).toLocaleString()}</span>
+                <span>{item.timestamp}</span>
                 {item.region && item.region !== 'Unknown' && (
                   <>
                     <span className="hidden sm:inline mx-1">•</span>
