@@ -131,7 +131,7 @@ const Scanner: React.FC<ScannerProps> = ({ onScanComplete, onCancel }) => {
     const result: ScanResult = {
       id: crypto.randomUUID(),
       plateNumber: plateInput.toUpperCase(),
-      timestamp: new Date().toISOString(),
+      timestamp: new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }),
       method: activeTab === 'camera' ? 'camera' : 'manual',
       entryType: 'repair',
       serviceDetails: serviceDetails, // Required for Repair
